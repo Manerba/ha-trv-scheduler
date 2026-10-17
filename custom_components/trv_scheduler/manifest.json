@@ -1,7 +1,7 @@
 {
   "domain": "trv_scheduler",
   "name": "TRV Zeitsteuerung",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "config_flow": true,
   "integration_type": "service",
   "iot_class": "local_push",
@@ -9,7 +9,8 @@
     "climate",
     "websocket_api",
     "frontend",
-    "http"
+    "http",
+    "lovelace"
   ],
   "requirements": [],
   "codeowners": [],

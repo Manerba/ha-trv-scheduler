@@ -28,9 +28,15 @@ entity: climate.trv2
 name: Schlafzimmer
 ```
 
-Die Karte wird durch die Integration geladen; kein zusätzlicher Download,
-Browser-Mod oder manuell angelegter Ressourcen-Eintrag ist nötig. Nach einem
-Update das Dashboard neu laden. Die gleiche Karte läuft im Browser und im
+Die Integration registriert die Karte automatisch als versionierte JavaScript-Modulressource
+im Dashboard. Kein zusätzlicher Download, Browser-Mod oder manuell angelegter
+Ressourcen-Eintrag ist nötig. Nach einem Update das Dashboard neu laden.
+Falls die Companion-App noch „Custom element doesn’t exist“ zeigt: zuerst
+das Dashboard nach unten ziehen, bei Bedarf in den App-Einstellungen
+„Frontend-Cache zurücksetzen“ wählen ([HA-Anleitung](https://www.home-assistant.io/faq/browser/)).
+Bei YAML-verwalteten Ressourcen bleibt die Startseiten-Einbindung als Fallback;
+für die explizite Registrierung dort `/trv_scheduler/trv-scheduler-card.js?v=0.2.1`
+mit `type: module` ergänzen. Die gleiche Karte läuft im Browser und im
 Dashboard der offiziellen Home-Assistant-Companion-App.
 
 Die Sperrfunktion erkennt Shelly BLU TRVs anhand der HA-Geräteregistrierung
@@ -121,6 +127,6 @@ trv_scheduler:
 
 Mit `.venv/bin/python -m homeassistant -c /pfad/zur/testkonfiguration --skip-pip`
 starten. `/api/onboarding` muss antworten und
-`/trv_scheduler/trv-scheduler-card.js?v=0.2.0` die gebündelte Karte liefern.
+`/trv_scheduler/trv-scheduler-card.js?v=0.2.1` die gebündelte Karte liefern.
 Dies prüft den vollständigen Komponentenstart einschließlich HTTP/Frontend;
 Config Flow, Speicherung und Entladen werden zusätzlich in den Integrationstests geprüft.

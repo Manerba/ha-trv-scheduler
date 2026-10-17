@@ -1,4 +1,4 @@
-/* TRV Scheduler 0.2.0 — bundled, dependency-free HA custom card. */
+/* TRV Scheduler 0.2.1 — bundled, dependency-free HA custom card. */
 (() => {
   if (customElements.get('trv-scheduler-card')) return;
   const icon = name => {

@@ -1,6 +1,6 @@
 # Verhalten und technische Grenzen
 
-Version 0.2.0, Zielversion Home Assistant 2025.4.2.
+Version 0.2.1, Zielversion Home Assistant 2025.4.2.
 
 ## Zeitplan
 
@@ -100,6 +100,11 @@ Pläne aktivieren. Die alten Automationen bleiben für Rollback erhalten;
 Freigabe-, Frostschutz- und Sollwertspeicher-Automationen bleiben aktiv.
 
 ## Kompatibilität und Testgrenzen
+
+Die gebündelte Karte wird in Storage-Dashboards als versionierte Modulressource
+registriert und bei Updates ohne Duplikat aktualisiert. So hängt das Laden nicht
+von der möglicherweise zwischengespeicherten Startseite der App ab. Fremde
+Ressourcen bleiben unverändert; YAML-Ressourcen werden nicht automatisch editiert.
 
 Custom Card mit eigenem HTML-Dialog, standardmäßige HA-WebSocket- und
 Frontend-Erweiterungspunkte. Keine Patches an HA-Core oder anderen Integrationen.
