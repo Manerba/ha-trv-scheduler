@@ -1,4 +1,4 @@
-/* TRV Scheduler 0.2.1 — bundled, dependency-free HA custom card. */
+/* TRV Scheduler 0.3.0 — bundled, dependency-free HA custom card. */
 (() => {
   if (customElements.get('trv-scheduler-card')) return;
   const icon = name => {
@@ -31,6 +31,7 @@
       return {entity: Object.keys(hass.states).find(k => k.startsWith('climate.')) || 'climate.thermostat'};
     }
     disconnectedCallback() { clearInterval(this._poll); this._generation++; }
+    _useWheels() { return matchMedia('(max-width: 600px), (any-pointer: coarse)').matches; }
     _build() {
       this._built = true;
       this.shadowRoot.innerHTML = `
@@ -58,6 +59,24 @@
           th:nth-child(n+3) {text-align:center} col:nth-child(1) {width:27%} col:nth-child(2) {width:25%} col:nth-child(n+3) {width:16%}
           input {width:100%;min-width:0;height:42px;border:1px solid var(--divider-color,#dce2e6);border-radius:9px;background:var(--secondary-background-color,#f5f7f8);color:inherit;padding:5px;font-size:16px}
           tr.paused input {opacity:.6} .lock[aria-pressed=true] {background:var(--primary-color,#0288d1);color:white}
+          input[readonly] {cursor:pointer;caret-color:transparent}
+          input[aria-expanded=true] {border-color:var(--primary-color,#0288d1);box-shadow:0 0 0 1px var(--primary-color,#0288d1)}
+          .picker-row td {padding:0 0 12px;border-top:0;text-align:left}
+          .picker {padding:14px 10px 10px;border:1px solid var(--divider-color,#dce2e6);border-radius:14px;background:var(--card-background-color,#fff)}
+          .picker-title {margin:0 0 12px;font-size:14px;font-weight:600;text-align:center}
+          .wheel-labels {display:flex;gap:20px;text-align:center;color:var(--secondary-text-color,#65717b);font-size:12px}
+          .wheel-labels span {flex:1}
+          .wheel-stage {display:flex;position:relative;isolation:isolate;margin:4px 0 8px}
+          .wheel-stage::before {content:'';position:absolute;top:88px;left:0;right:0;height:44px;border-radius:10px;background:var(--secondary-background-color,#edf2f5);z-index:-1}
+          .wheel {height:220px;flex:1;min-width:0;overflow-y:auto;padding:88px 0;scroll-snap-type:y mandatory;scroll-padding-block:88px;overscroll-behavior-y:contain;touch-action:pan-y;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline-offset:-3px;user-select:none;-webkit-user-select:none;mask-image:linear-gradient(to bottom,transparent,rgba(0,0,0,.25) 15%,#000 42%,#000 58%,rgba(0,0,0,.25) 85%,transparent);-webkit-mask-image:linear-gradient(to bottom,transparent,rgba(0,0,0,.25) 15%,#000 42%,#000 58%,rgba(0,0,0,.25) 85%,transparent)}
+          .wheel::-webkit-scrollbar {display:none}
+          .wheel:focus-visible {outline:2px solid var(--primary-color,#0288d1);border-radius:10px}
+          .wheel-value {height:44px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-size:27px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+          .wheel-value.selected {font-weight:650;color:var(--primary-color,#0288d1)}
+          .wheel-colon {align-self:center;width:20px;text-align:center;font-size:26px;font-weight:600}
+          .picker-actions {display:flex;gap:12px;justify-content:space-between;border-top:1px solid var(--divider-color,#e5e9ec);padding-top:8px}
+          .picker-actions button {min-height:44px;flex:1;font-size:14px}
+          .picker-apply {border:0;border-radius:10px;background:var(--primary-color,#0288d1);color:var(--text-primary-color,#fff);font-weight:600}
           .delete {color:var(--error-color,#ba3e3e)} .empty {padding:24px 0;color:var(--secondary-text-color,#65717b);font-size:14px;text-align:center}
           .add {width:100%;border:1px dashed var(--divider-color,#c9d4dd);background:transparent;color:var(--primary-color,#0288d1);min-height:44px;border-radius:10px;margin:12px 0;font-weight:600}
           .device {border-top:1px solid var(--divider-color,#e5e9ec);padding-top:14px;margin-top:6px;font-size:13px}
@@ -108,6 +127,7 @@
     }
     _close() {
       if (this._busy) {this._message('Speichervorgang läuft. Bitte kurz warten.'); return;}
+      if (this._picker) {this._finishPicker(false);return;}
       if (this._dirty && !window.confirm('Nicht gespeicherte Änderungen verwerfen?')) return;
       this._generation++;
       this._reading=false;
@@ -120,14 +140,15 @@
       this.$('.message').classList.toggle('error', error);
     }
     _controls() {
-      const disabled = this._busy || !this._canEdit || !this._draft;
-      this.shadowRoot.querySelectorAll('tbody input,tbody button,.plan-toggle,.add,.retry').forEach(el => el.disabled = disabled);
+      const disabled = this._busy || !this._canEdit || !this._draft || !!this._picker;
+      this.shadowRoot.querySelectorAll('tbody input,tbody button,.plan-toggle,.add,.retry').forEach(el => {if(!el.closest('.picker-row'))el.disabled = disabled;});
       this.shadowRoot.querySelectorAll('.lock').forEach(el => el.disabled = disabled || !this._state?.lock_supported);
-      this.$('.unlock').disabled = this._busy || this._reading || !this._canEdit;
+      this.$('.unlock').disabled = this._busy || this._reading || !this._canEdit || !!this._picker;
       this.$('.refresh').disabled = this._busy || this._reading;
-      this.$('.reload').disabled = this._busy;
+      this.$('.reload').disabled = this._busy || !!this._picker;
     }
     async _load() {
+      this._picker = null;
       const generation = this._generation;
       this._busy = true; this._controls(); this._message('Zeitplan wird geladen …');
       try {
@@ -160,11 +181,11 @@
         time.onfocus=()=>time.select();
         time.oninput=()=>{if(/^\d{4}$/.test(time.value))time.value=time.value.slice(0,2)+':'+time.value.slice(2);};
         time.setAttribute('aria-label',`Uhrzeit ${row.time}`);time.dataset.focusKey=`time-${row.id}`;
-        time.onchange=()=>{if(time.checkValidity()){row.time=time.value;this._save();}else time.reportValidity();};cell(time);
+        time.onchange=()=>{if(time.checkValidity()){row.time=time.value;this._save();}else time.reportValidity();};this._bindPicker(time,row,'time');cell(time);
         const temp = document.createElement('input');temp.type='number';temp.inputMode='decimal';temp.required=true;temp.value=row.temperature;
         temp.min=this._state.limits?.min ?? 4;temp.max=this._state.limits?.max ?? 30;temp.step=this._state.limits?.step || 'any';
         temp.setAttribute('aria-label',`Zieltemperatur ${row.time}`);temp.dataset.focusKey=`temp-${row.id}`;
-        temp.onchange=()=>{if(temp.checkValidity()){row.temperature=Number(temp.value);this._save();}else temp.reportValidity();};cell(temp);
+        temp.onchange=()=>{if(temp.checkValidity()){row.temperature=Number(temp.value);this._save();}else temp.reportValidity();};this._bindPicker(temp,row,'temperature');cell(temp);
         const active=document.createElement('button');active.className='switch';active.innerHTML='<span></span>';active.setAttribute('role','switch');
         active.setAttribute('aria-label',`Schaltzeit ${row.time} aktivieren`);active.setAttribute('aria-checked',String(row.enabled));
         active.onclick=()=>{row.enabled=!row.enabled;this._save();};cell(active);
@@ -180,6 +201,95 @@
       this._renderLock();this._controls();
       this.$('.save-state').textContent=this._dirty?'Noch nicht gespeichert':this._draft.enabled?'Zeitplan aktiv · täglich':'Zeitplan pausiert';
       if(focusKey) [...body.querySelectorAll('input')].find(el=>el.dataset.focusKey===focusKey)?.focus();
+    }
+    _bindPicker(input,row,kind) {
+      if(!this._useWheels())return;
+      input.readOnly=true;input.inputMode='none';
+      input.setAttribute('aria-expanded','false');
+      input.setAttribute('aria-controls','value-picker');
+      const open=()=>this._openPicker(row,kind,input);
+      input.onclick=open;
+      input.onkeydown=event=>{if(['Enter',' ','ArrowDown'].includes(event.key)){event.preventDefault();open();}};
+    }
+    _makeWheel(label,values,initial,format) {
+      const element=document.createElement('div');element.className='wheel';element.tabIndex=0;
+      element.setAttribute('role','spinbutton');element.setAttribute('aria-label',label);
+      element.setAttribute('aria-valuemin',String(values[0]));element.setAttribute('aria-valuemax',String(values.at(-1)));
+      const options=values.map((value,index)=>{
+        const option=document.createElement('div');option.className='wheel-value';option.textContent=format(value);option.setAttribute('aria-hidden','true');
+        option.onclick=()=>select(index);
+        element.append(option);return option;
+      });
+      let selected=-1;
+      const read=()=>{
+        const index=Math.max(0,Math.min(values.length-1,Math.round(element.scrollTop/44)));
+        if(index!==selected){options[selected]?.classList.remove('selected');selected=index;options[index].classList.add('selected');}
+        element.setAttribute('aria-valuenow',String(values[index]));element.setAttribute('aria-valuetext',format(values[index]));
+        return values[index];
+      };
+      const select=index=>{element.scrollTop=Math.max(0,Math.min(values.length-1,index))*44;read();};
+      element.addEventListener('scroll',read,{passive:true});
+      element.onkeydown=event=>{
+        const moves={ArrowUp:1,ArrowRight:1,ArrowDown:-1,ArrowLeft:-1,PageUp:10,PageDown:-10};
+        if(event.key in moves){event.preventDefault();read();select(selected+moves[event.key]);}
+        else if(event.key==='Home'||event.key==='End'){event.preventDefault();select(event.key==='Home'?0:values.length-1);}
+      };
+      return {element,read,init:()=>select(values.reduce((best,v,i)=>Math.abs(v-initial)<Math.abs(values[best]-initial)?i:best,0))};
+    }
+    _openPicker(row,kind,input) {
+      if(this._busy||!this._canEdit||this._picker)return;
+      const pickerRow=document.createElement('tr');pickerRow.className='picker-row';
+      const cell=document.createElement('td');cell.colSpan=5;pickerRow.append(cell);
+      const panel=document.createElement('section');panel.className='picker';panel.id='value-picker';panel.setAttribute('role','group');
+      panel.setAttribute('aria-label',kind==='time'?'Uhrzeit auswählen':'Temperatur auswählen');cell.append(panel);
+      const title=document.createElement('p');title.className='picker-title';title.textContent=kind==='time'?'Uhrzeit auswählen':`Temperatur ab ${row.time}`;panel.append(title);
+      const labels=document.createElement('div');labels.className='wheel-labels';labels.setAttribute('aria-hidden','true');panel.append(labels);
+      const stage=document.createElement('div');stage.className='wheel-stage';panel.append(stage);
+      let wheels;
+      const pad=value=>String(value).padStart(2,'0');
+      if(kind==='time') {
+        const [hours,minutes]=row.time.split(':').map(Number);
+        wheels=[this._makeWheel('Stunden',Array.from({length:24},(_,i)=>i),hours,pad),this._makeWheel('Minuten',Array.from({length:60},(_,i)=>i),minutes,pad)];
+        labels.innerHTML='<span>Stunden</span><span>Minuten</span>';
+        stage.append(wheels[0].element);
+        const colon=document.createElement('span');colon.className='wheel-colon';colon.textContent=':';colon.setAttribute('aria-hidden','true');stage.append(colon,wheels[1].element);
+      } else {
+        const min=this._state.limits?.min??4,max=this._state.limits?.max??30,step=this._state.limits?.step||.5;
+        const first=Math.ceil(min/step-1e-8),last=Math.floor(max/step+1e-8);
+        if(last<first||last-first>5000){this._message('Für dieses Gerät ist keine Drehradauswahl verfügbar.',true);return;}
+        const values=Array.from({length:last-first+1},(_,i)=>Number(((first+i)*step).toFixed(8)));
+        // Preserve a pre-existing off-grid value until the user deliberately changes it.
+        if(!values.includes(row.temperature))values.push(row.temperature);
+        values.sort((a,b)=>a-b);
+        const unit=this._state.temperature_unit||'°C';
+        const format=value=>`${value.toLocaleString('de-DE',{maximumFractionDigits:8})} ${unit}`;
+        wheels=[this._makeWheel('Zieltemperatur',values,row.temperature,format)];
+        labels.innerHTML='<span>Zieltemperatur</span>';stage.append(wheels[0].element);
+      }
+      const actions=document.createElement('div');actions.className='picker-actions';
+      const cancel=document.createElement('button');cancel.className='text-button';cancel.textContent='Abbrechen';cancel.onclick=()=>this._finishPicker(false);
+      const apply=document.createElement('button');apply.className='picker-apply';apply.textContent='Übernehmen';apply.onclick=()=>this._finishPicker(true);
+      actions.append(cancel,apply);panel.append(actions);
+      this._picker={row,kind,input,wheels,pickerRow};
+      input.setAttribute('aria-expanded','true');input.closest('tr').after(pickerRow);
+      this._controls();
+      wheels.forEach(wheel=>wheel.init());
+      // Focus the accessible wheel without invoking the iOS keyboard.
+      wheels[0].element.focus({preventScroll:true});
+      panel.scrollIntoView({block:'nearest',behavior:'instant'});
+    }
+    _finishPicker(commit) {
+      const picker=this._picker;if(!picker)return;
+      const values=picker.wheels.map(wheel=>wheel.read());
+      const value=picker.kind==='time'?values.map(v=>String(v).padStart(2,'0')).join(':'):values[0];
+      const changed=commit&&picker.row[picker.kind]!==value;
+      this._picker=null;picker.pickerRow.remove();picker.input.setAttribute('aria-expanded','false');
+      this._controls();
+      if(changed){
+        picker.row[picker.kind]=value;
+        const key=picker.input.dataset.focusKey;
+        this._save().then(()=>{if(this.$('dialog').open)[...this.shadowRoot.querySelectorAll('tbody input')].find(el=>el.dataset.focusKey===key)?.focus({preventScroll:true});});
+      } else picker.input.focus({preventScroll:true});
     }
     _add() {
       if(this._draft.rows.length>=48){this._message('Maximal 48 Schaltzeiten pro Thermostat.',true);return;}

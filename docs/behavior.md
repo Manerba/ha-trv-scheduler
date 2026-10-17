@@ -1,6 +1,6 @@
 # Verhalten und technische Grenzen
 
-Version 0.2.1, Zielversion Home Assistant 2025.4.2.
+Version 0.3.0, Zielversion Home Assistant 2025.4.2.
 
 ## Zeitplan
 
@@ -120,3 +120,19 @@ Fernsteuerung trotz Sperre und Wiederherstellung über frische RPC-Antworten.
 Quellen: [Shelly BLU TRV](https://shelly-api-docs.shelly.cloud/docs-ble/Devices/BLU_ZB/trv/),
 [Gateway RPC](https://shelly-api-docs.shelly.cloud/gen2/Devices/Gen3/ShellyBluGwG3/),
 [HA Custom Cards](https://developers.home-assistant.io/docs/frontend/custom-ui/custom-card/).
+
+## Mobile Werteauswahl
+
+Bei höchstens 600 Pixel Viewportbreite oder einem Touch-Zeigegerät öffnen
+Uhrzeit und Solltemperatur einen Picker unter der betreffenden Zeile über
+alle fünf Spalten. Die mittige Auswahl ist hervorgehoben, Nachbarwerte werden
+zu den Rändern transparent. Native Scrollbewegung und CSS Scroll Snap sorgen
+für Wischen und Einrasten; Tastaturpfeile, Bild-auf/-ab, Pos1 und Ende sind
+ebenfalls nutzbar. Es wird keine Bildschirmtastatur geöffnet.
+
+Stunden 00–23, Minuten 00–59, Temperatur nach Gerätegrenzen und Schrittweite.
+Es wird erst beim Übernehmen gespeichert. Abbrechen oder Escape verwerfen
+die Auswahl; ein weiteres Escape schließt den Hauptdialog. Während der
+Auswahl sind die anderen Zeilenaktionen gesperrt. Ein Konflikt beim Speichern
+behält den ausgewählten Wert als Entwurf und verlangt explizites Neuladen.
+Am Desktop bleiben die direkt beschreibbaren Eingabefelder verfügbar.

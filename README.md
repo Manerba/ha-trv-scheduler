@@ -2,7 +2,12 @@
 
 Eigenständige Home-Assistant-Integration mit täglichem Zeitplan je Thermostat.
 Ein Dashboard-Button öffnet einen Tabellen-Dialog: Uhrzeit und Solltemperatur
-lassen sich direkt bearbeiten; jede Zeile hat Aktivierung, Gerätesperre und
+lassen sich direkt bearbeiten. Auf schmalen Bildschirmen und Touch-Geräten öffnet
+ein Antippen Drehräder über die volle Tabellenbreite, mit verblassenden Nachbarwerten
+und Einrasten beim Wischen. Stunden und Minuten sind getrennt einstellbar;
+das Temperaturrad nutzt die Grenzen und Schrittweite des Geräts.
+„Übernehmen“ speichert, „Abbrechen“ verwirft die Auswahl.
+Jede Zeile hat Aktivierung, Gerätesperre und
 Löschen. Neue Schaltzeiten starten pausiert. Änderungen werden automatisch
 und mit Schutz gegen gleichzeitiges Überschreiben gespeichert.
 
@@ -35,7 +40,7 @@ Falls die Companion-App noch „Custom element doesn’t exist“ zeigt: zuerst
 das Dashboard nach unten ziehen, bei Bedarf in den App-Einstellungen
 „Frontend-Cache zurücksetzen“ wählen ([HA-Anleitung](https://www.home-assistant.io/faq/browser/)).
 Bei YAML-verwalteten Ressourcen bleibt die Startseiten-Einbindung als Fallback;
-für die explizite Registrierung dort `/trv_scheduler/trv-scheduler-card.js?v=0.2.1`
+für die explizite Registrierung dort `/trv_scheduler/trv-scheduler-card.js?v=0.3.0`
 mit `type: module` ergänzen. Die gleiche Karte läuft im Browser und im
 Dashboard der offiziellen Home-Assistant-Companion-App.
 
@@ -127,6 +132,17 @@ trv_scheduler:
 
 Mit `.venv/bin/python -m homeassistant -c /pfad/zur/testkonfiguration --skip-pip`
 starten. `/api/onboarding` muss antworten und
-`/trv_scheduler/trv-scheduler-card.js?v=0.2.1` die gebündelte Karte liefern.
+`/trv_scheduler/trv-scheduler-card.js?v=0.3.0` die gebündelte Karte liefern.
 Dies prüft den vollständigen Komponentenstart einschließlich HTTP/Frontend;
 Config Flow, Speicherung und Entladen werden zusätzlich in den Integrationstests geprüft.
+
+Die Browserprüfungen lassen sich auch mit WebKit ausführen:
+
+```bash
+.venv/bin/playwright install --with-deps webkit
+TRV_BROWSER_ENGINE=webkit .venv/bin/python -m pytest -q tests/test_frontend.py
+```
+
+Der zusätzliche Test mit eingespeisten Touch-Wischbewegungen verwendet Chromium;
+die übrigen Browserfälle laufen auch unter WebKit. Das ersetzt keinen Test
+auf einem physischen iPhone in der Companion-App.
