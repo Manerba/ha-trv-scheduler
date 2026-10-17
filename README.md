@@ -19,12 +19,17 @@ Planung und Fortschritt: [Tareas, Projekt 76](http://10.0.12.7:8504/).
 
 ## Quellcode
 
-Das private Repository liegt auf [Gitea](https://10.0.12.17:3000/mir/ha-trv-scheduler).
-Der Entwicklungsbranch heißt `master`.
+Der Quellcode liegt in privaten Repositories auf
+[Gitea](https://10.0.12.17:3000/mir/ha-trv-scheduler) und
+[GitHub](https://github.com/Manerba/ha-trv-scheduler).
+Der Entwicklungsbranch heißt `master`; Änderungen werden auf beide Remotes gepusht.
 
 ```bash
 git clone git@10.0.12.17:mir/ha-trv-scheduler.git
 cd ha-trv-scheduler
+git remote add github git@github.com:Manerba/ha-trv-scheduler.git
+git push origin master
+git push github master
 ```
 
 ## Installation
