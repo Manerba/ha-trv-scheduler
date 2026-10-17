@@ -1,0 +1,18 @@
+{
+  "title": "TRV Zeitsteuerung",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Thermostat-Zeitsteuerung einrichten",
+        "description": "Der neue Zeitplan startet leer und deaktiviert. Vorhandene Automationen werden nicht verändert.",
+        "data": {
+          "climate_entity": "Thermostat",
+          "gate_entity": "Heizungsfreigabe (optional)",
+          "setter_script": "Skript zum Setzen der Temperatur (optional)"
+        }
+      }
+    },
+    "error": {"invalid_entity": "Bitte eine vorhandene Entität des passenden Typs wählen."},
+    "abort": {"already_configured": "Dieses Thermostat hat bereits eine Zeitsteuerung."}
+  }
+}

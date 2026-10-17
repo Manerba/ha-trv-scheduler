@@ -1,0 +1,43 @@
+{
+  "source": "Read-only inventory on 2026-10-17; recheck before migration",
+  "thermostats": [
+    {
+      "config": {
+        "climate_entity": "climate.trv1",
+        "gate_entity": "input_boolean.heizung_aktiv_buero",
+        "setter_script": "script.trv_sollwert_zuverlaessig_setzen"
+      },
+      "schedule": {"revision": 0, "enabled": false, "rows": []}
+    },
+    {
+      "config": {
+        "climate_entity": "climate.trv2",
+        "gate_entity": "input_boolean.heizung_aktiv_schlafzimmer",
+        "setter_script": "script.trv_sollwert_zuverlaessig_setzen"
+      },
+      "schedule": {
+        "revision": 0,
+        "enabled": false,
+        "rows": [
+          {"id": "morning", "time": "08:00", "temperature": 17, "enabled": true},
+          {"id": "evening", "time": "17:30", "temperature": 22, "enabled": true}
+        ]
+      }
+    },
+    {
+      "config": {
+        "climate_entity": "climate.trv3",
+        "gate_entity": "input_boolean.heizung_aktiv_kinderzimmer",
+        "setter_script": "script.trv_sollwert_zuverlaessig_setzen"
+      },
+      "schedule": {
+        "revision": 0,
+        "enabled": false,
+        "rows": [
+          {"id": "morning", "time": "07:00", "temperature": 22.5, "enabled": true},
+          {"id": "evening", "time": "20:00", "temperature": 17, "enabled": true}
+        ]
+      }
+    }
+  ]
+}
