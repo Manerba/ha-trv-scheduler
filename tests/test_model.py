@@ -99,3 +99,26 @@ def test_unknown_fields_rejected(rows):
     rows[0]["service"] = "script.other"
     with pytest.raises(InvalidSchedule):
         plan(rows)
+
+
+def test_old_rows_default_to_unlocked(rows):
+    schedule = plan(rows)
+    assert all(not row.locked for row in schedule.rows)
+    assert all(row["locked"] is False for row in schedule.to_dict()["rows"])
+
+
+def test_lock_belongs_to_each_scheduled_point(rows):
+    rows[0]["locked"] = False
+    rows[1]["locked"] = True
+    schedule = plan(rows)
+    morning = next_occurrence(schedule, datetime(2026, 10, 17, 5, tzinfo=UTC), BERLIN)
+    assert morning.row.locked is True
+    evening = next_occurrence(schedule, morning.at, BERLIN)
+    assert evening.row.locked is False
+
+
+@pytest.mark.parametrize("value", [None, 0, 1, "false", "true"])
+def test_lock_requires_boolean(rows, value):
+    rows[0]["locked"] = value
+    with pytest.raises(InvalidSchedule, match="Sperrzustand"):
+        plan(rows)

@@ -228,3 +228,54 @@ async def test_stop_prevents_future_commands(hass, manager):
     with patch.object(type(hass.services), "async_call", new=AsyncMock()) as service:
         await fire(manager)
         service.assert_not_awaited()
+
+
+async def test_lock_plan_cannot_activate_until_adapter_is_available(hass, manager, rows):
+    rows[0]["locked"] = True
+    conn = connection()
+    await ws_replace.__wrapped__(
+        hass,
+        conn,
+        {
+            "id": 4,
+            "entity_id": "climate.trv2",
+            "expected_revision": 1,
+            "enabled": True,
+            "rows": rows,
+        },
+    )
+    assert conn.send_error.call_args.args[1] == "invalid_schedule"
+    assert manager.repository.schedule.revision == 1
+    assert manager.snapshot()["lock_supported"] is False
+
+
+async def test_lock_plan_can_be_saved_as_disabled_draft(hass, manager, rows):
+    rows[0]["locked"] = True
+    conn = connection()
+    await ws_replace.__wrapped__(
+        hass,
+        conn,
+        {
+            "id": 5,
+            "entity_id": "climate.trv2",
+            "expected_revision": 1,
+            "enabled": False,
+            "rows": rows,
+        },
+    )
+    conn.send_error.assert_not_called()
+    assert manager.repository.schedule.rows[1].locked is True
+    assert manager.repository.schedule.enabled is False
+
+
+async def test_runtime_does_not_silently_ignore_missing_lock_adapter(hass, manager):
+    from dataclasses import replace
+
+    locked = replace(manager.repository.schedule.rows[0], locked=True)
+    with (
+        patch("custom_components.trv_scheduler.manager.dt_util.utcnow", return_value=NOW),
+        patch.object(type(hass.services), "async_call", new=AsyncMock()) as service,
+    ):
+        await manager._execute(Occurrence(locked, NOW), 1)
+        service.assert_not_awaited()
+    assert manager.last_result["status"] == "failed"

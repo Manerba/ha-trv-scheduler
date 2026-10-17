@@ -6,6 +6,11 @@ noch nicht auf dem produktiven HA installiert.
 Ziel ist ein Button unter jedem Thermostat, der einen Dialog mit Uhrzeit,
 Zieltemperatur, Aktivierungsschalter und Löschen je Zeile öffnet. Neue Zeilen
 werden über einen Plus-Button angelegt. Auch pausierte Zeilen bleiben gespeichert.
+Zusätzlich bekommt jede Zeile ein Schloss: Zum Schaltpunkt wird die Bedienung
+am TRV-Drehring gesperrt oder wieder freigegeben, bis zum nächsten aktiven
+Schaltpunkt. Das Feld `locked` ist im Modell vorhanden; der Hardwareadapter
+und die Oberfläche folgen in Aufgaben 386 und 383. Bis dahin kann ein Plan
+mit aktiven Sperrzeilen nicht aktiviert werden (`lock_supported=false`).
 
 Planung und Fortschritt: **Tareas-Projekt 76**, [Tareas](http://10.0.12.7:8504/).
 Die Teilaufgaben 380–385 enthalten Abnahmebedingungen und Abhängigkeiten.

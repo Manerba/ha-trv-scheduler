@@ -60,6 +60,7 @@ class ScheduleRepository:
                         old is None
                         or row.time != old.time
                         or row.temperature != old.temperature
+                        or row.locked != old.locked
                         or (row.enabled and not old.enabled)
                     )
                 if needs_limits:

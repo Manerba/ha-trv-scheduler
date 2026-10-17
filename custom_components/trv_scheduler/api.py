@@ -59,6 +59,7 @@ async def ws_replace(hass, connection, msg):
     if not (manager := _manager(hass, connection, msg, POLICY_CONTROL)):
         return
     try:
+        manager.validate_lock_request(msg["enabled"], msg["rows"])
         try:
             limits = manager.limits()
         except InvalidSchedule:

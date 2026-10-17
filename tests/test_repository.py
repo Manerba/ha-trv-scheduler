@@ -98,3 +98,16 @@ async def test_can_disable_row_offline_but_cannot_reenable(storage, rows):
     with pytest.raises(InvalidSchedule, match="nicht erreichbar"):
         await repo.async_replace(expected_revision=2, enabled=True, rows=rows, limits=None)
     assert repo.schedule.revision == 2
+
+
+async def test_lock_survives_reload_and_pausing(storage, rows):
+    rows[0]["locked"] = True
+    repo = ScheduleRepository(storage)
+    await repo.async_load()
+    await replace(repo, rows)
+    rows[0]["enabled"] = False
+    await repo.async_replace(expected_revision=1, enabled=True, rows=rows, limits=None)
+    fresh = ScheduleRepository(storage)
+    await fresh.async_load()
+    assert fresh.schedule.rows[1].locked is True
+    assert fresh.schedule.rows[1].enabled is False

@@ -8,6 +8,20 @@ Technische Spezifikation zu Tareas 76 / Teilaufgabe 380.
   abgelehnt. Die Oberfläche sortiert nach Uhrzeit.
 - Jede Zeile hat zusätzlich einen Aktivierungsschalter neben dem Löschen.
   Deaktivierte Zeilen behalten ihre Werte, lösen aber keine Aktion aus.
+- Jede Zeile erhält außerdem ein Schloss (`locked`). Zum Schaltpunkt sollen
+  Temperatur und echte Gerätesperre gesetzt werden: geschlossen sperrt den
+  Drehring, offen erlaubt manuelle Temperaturänderungen. Der Zustand gilt bis
+  zum nächsten ausgeführten aktiven Schaltpunkt, auch über Mitternacht.
+  Pausierte Zeilen ändern weder Temperatur noch Sperre. Das Bearbeiten eines
+  Schlosses plant eine Aktion; es sperrt nicht sofort das Gerät.
+- Die Nutzerentscheidung vom 17.10.2026 ist ausdrücklich **zeitabhängig je
+  Zeile**, nicht eine dauerhafte Sperre pro TRV. HA-Temperatursteuerung bleibt
+  möglich. Geräteseitige Bestätigung ist erforderlich, bevor die Oberfläche
+  einen tatsächlich gesperrten Zustand anzeigt.
+- Implementierungsstand: `locked` ist gespeichert und validiert; ältere Zeilen
+  ohne das Feld werden als `false` geladen. Der Gateway-Adapter ist in Aufgabe
+  386 noch offen. Bis dahin meldet die API `lock_supported=false` und weist die
+  Aktivierung von Plänen mit aktiven Sperrzeilen zurück, statt sie zu ignorieren.
 - Neu angelegte Pläne sind leer und deaktiviert. Aktivierung ist unabhängig
   von der bestehenden Heizungsfreigabe. Leere Pläne schalten nie.
 - Die Uhrzeit richtet sich nach der HA-Zeitzone, nicht nach dem iPhone.
@@ -55,6 +69,26 @@ TRV3 Kinderzimmer: 07:00 22,5 °C, 20:00 17 °C.
 Diese Werte sind eine am 17.10.2026 gelesene Bestandsaufnahme, kein automatischer
 Import. Vor Umschaltung Bestand erneut lesen und sichern. Alte vier
 Zeitautomationen erst nach geprüfter Übernahme deaktivieren, nicht löschen.
+
+## Gerätesperre: Anbindung und weitere Abnahme
+
+Alle drei vorhandenen Shelly BLU TRVs besitzen `sys.ui.lock`. Die am
+17.10.2026 gelesenen Gateway-Cachewerte sind jeweils `false`; am Gerät wurde
+nichts umgeschaltet. HA 2025.4.2 stellt keine Lock-Entität dafür bereit.
+Der Adapter in Aufgabe 386 muss `Sys.SetConfig` über `BluTrv.Call` verwenden
+und den Zustand anschließend mit einer frischen Geräteabfrage bestätigen.
+Die Dokumentation erlaubt Antwortzeiten bis zu einer Minute. Keine fremden
+UI-Einstellungen überschreiben, keine Zugangsdaten an die Karte liefern.
+
+Vor Inbetriebnahme außerdem festlegen und prüfen: sicheres Entsperren beim
+Deaktivieren/Entfernen eines Plans, Löschen der letzten Entsperrzeile,
+Geräteausfall zwischen Temperatur- und Sperrbefehl und Wiederherstellung nach
+Neustart. Ein klarer Weg zum sofortigen manuellen Entsperren muss vorhanden
+sein. Diese Lebenszyklusfälle sind Teil der Aufgabe 386, noch keine fertige
+Runtime-Funktion.
+
+Quellen: [Shelly BLU TRV](https://shelly-api-docs.shelly.cloud/docs-ble/Devices/BLU_ZB/trv/),
+[Gateway RPC](https://shelly-api-docs.shelly.cloud/gen2/Devices/Gen3/ShellyBluGwG3/).
 
 ## Kompatibilität
 

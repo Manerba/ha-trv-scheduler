@@ -12,6 +12,7 @@ Tareas ist die verbindliche Planung und Fortschrittsdokumentation.
 - MCP: tareas_codex, erwarteter User: Codex @ Tareas (28)
 - Teilaufgaben: 380 Spezifikation, 381 Modell/Speicherung/API,
   382 Ausführung, 383 Oberfläche, 384 Paket/Kompatibilität, 385 Migration.
+  386 Gerätesperre: Schloss je Zeile, zeitabhängig (Nutzerentscheidung).
 - Vor Tareas-Schreiboperationen `get_project_status` lesen.
 - Beschreibungsänderungen mit gelesener Revision; Fortschritt und Testbelege
   mit `handoff_add` dokumentieren. Keine Schatten-Aufgabenliste pflegen.

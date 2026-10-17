@@ -69,10 +69,16 @@ class Row:
     time: str
     temperature: float
     enabled: bool = True
+    locked: bool = False
 
     @classmethod
     def parse(cls, raw: Any, limits: TemperatureLimits | None = None) -> Row:
-        if not isinstance(raw, dict) or set(raw) != {"id", "time", "temperature", "enabled"}:
+        required = {"id", "time", "temperature", "enabled"}
+        if (
+            not isinstance(raw, dict)
+            or not required <= set(raw)
+            or set(raw) - required - {"locked"}
+        ):
             raise InvalidSchedule("Eine Schaltzeit braucht id, time, temperature und enabled.")
         if not isinstance(raw["id"], str) or not ID_RE.fullmatch(raw["id"]):
             raise InvalidSchedule("Ungültige Zeilen-ID.")
@@ -81,9 +87,13 @@ class Row:
         temperature = finite_number(raw["temperature"])
         if type(raw["enabled"]) is not bool:
             raise InvalidSchedule("Der Aktivierungszustand muss ein Wahrheitswert sein.")
+        # Backward-compatible with the initial version-1 storage format.
+        locked = raw.get("locked", False)
+        if type(locked) is not bool:
+            raise InvalidSchedule("Der Sperrzustand muss ein Wahrheitswert sein.")
         if limits:
             limits.validate(temperature)
-        return cls(raw["id"], raw["time"], temperature, raw["enabled"])
+        return cls(raw["id"], raw["time"], temperature, raw["enabled"], locked)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -91,6 +101,7 @@ class Row:
             "time": self.time,
             "temperature": self.temperature,
             "enabled": self.enabled,
+            "locked": self.locked,
         }
 
 

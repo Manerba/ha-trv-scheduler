@@ -15,7 +15,7 @@ from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.util import dt as dt_util
 
 from .const import CONF_CLIMATE, CONF_GATE, CONF_SETTER
-from .model import InvalidSchedule, Occurrence, TemperatureLimits, next_occurrence
+from .model import InvalidSchedule, Occurrence, Schedule, TemperatureLimits, next_occurrence
 from .repository import ScheduleRepository
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,6 +47,14 @@ class ScheduleManager:
             state.attributes.get("target_temp_step"),
         )
 
+    def validate_lock_request(self, enabled: bool, rows: list) -> None:
+        """Do not silently activate lock actions before the gateway adapter exists."""
+        candidate = Schedule.parse({"revision": 0, "enabled": enabled, "rows": rows})
+        if candidate.enabled and any(row.enabled and row.locked for row in candidate.rows):
+            raise InvalidSchedule(
+                "Die Gerätesperre ist für dieses Thermostat noch nicht angebunden."
+            )
+
     def snapshot(self) -> dict[str, Any]:
         state = self.hass.states.get(self.entity_id)
         try:
@@ -66,6 +74,7 @@ class ScheduleManager:
             ),
             "next_at": point.at.isoformat() if point else None,
             "last_result": self.last_result,
+            "lock_supported": False,
         }
 
     def _next(self, after: datetime) -> Occurrence | None:
@@ -125,6 +134,8 @@ class ScheduleManager:
             self._result(point, "blocked")
             return
         try:
+            if point.row.locked:
+                raise InvalidSchedule("Die Gerätesperre ist noch nicht angebunden.")
             self.limits().validate(point.row.temperature)
             if setter := self.config.get(CONF_SETTER):
                 domain, service = setter.split(".", 1)
