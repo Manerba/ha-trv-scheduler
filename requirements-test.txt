@@ -1,5 +1,7 @@
 # Python 3.13; isolated development environment, not installed on production HA.
 homeassistant==2025.4.2
+home-assistant-frontend==20250411.0
 pytest==9.1.1
 pytest-asyncio==1.4.0
 ruff==0.17.1
+playwright==1.64.0

@@ -59,12 +59,11 @@ async def ws_replace(hass, connection, msg):
     if not (manager := _manager(hass, connection, msg, POLICY_CONTROL)):
         return
     try:
-        manager.validate_lock_request(msg["enabled"], msg["rows"])
         try:
             limits = manager.limits()
         except InvalidSchedule:
             limits = None
-        await manager.repository.async_replace(
+        await manager.async_replace(
             expected_revision=msg["expected_revision"],
             enabled=msg["enabled"],
             rows=msg["rows"],
@@ -85,7 +84,44 @@ async def ws_replace(hass, connection, msg):
     connection.send_result(msg["id"], manager.snapshot())
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "trv_scheduler/lock_status",
+        vol.Required("entity_id"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_lock_status(hass, connection, msg):
+    if manager := _manager(hass, connection, msg, POLICY_READ):
+        try:
+            await manager.async_refresh_lock()
+        except (HomeAssistantError, OSError):
+            pass  # Snapshot distinguishes unknown/error from unlocked.
+        connection.send_result(msg["id"], manager.snapshot())
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "trv_scheduler/unlock",
+        vol.Required("entity_id"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_unlock(hass, connection, msg):
+    if manager := _manager(hass, connection, msg, POLICY_CONTROL):
+        try:
+            await manager.async_unlock()
+        except (HomeAssistantError, OSError, InvalidSchedule):
+            connection.send_error(
+                msg["id"], "unlock_failed", "Entsperren nicht bestätigt. Bitte erneut versuchen."
+            )
+            return
+        connection.send_result(msg["id"], manager.snapshot())
+
+
 @callback
 def async_register_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_get)
     websocket_api.async_register_command(hass, ws_replace)
+    websocket_api.async_register_command(hass, ws_lock_status)
+    websocket_api.async_register_command(hass, ws_unlock)

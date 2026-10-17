@@ -1,4 +1,5 @@
 from types import MappingProxyType
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant.config_entries import ConfigEntries, ConfigEntry
@@ -8,6 +9,16 @@ from custom_components.trv_scheduler import async_setup, async_setup_entry, asyn
 from custom_components.trv_scheduler.config_flow import TRVSchedulerConfigFlow
 from custom_components.trv_scheduler.const import DOMAIN
 from custom_components.trv_scheduler.model import TemperatureLimits
+
+
+@pytest.fixture(autouse=True)
+def isolate_webserver_and_registries():
+    # Full frontend loading and discovery are covered separately and in the live install.
+    with (
+        patch("custom_components.trv_scheduler.async_setup_resources", new=AsyncMock()),
+        patch("custom_components.trv_scheduler.resolve_gateway", return_value=None),
+    ):
+        yield
 
 
 def entry():

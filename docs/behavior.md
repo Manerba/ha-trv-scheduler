@@ -1,98 +1,117 @@
-# Verhalten der ersten Version
+# Verhalten und technische Grenzen
 
-Technische Spezifikation zu Tareas 76 / Teilaufgabe 380.
+Version 0.2.0, Zielversion Home Assistant 2025.4.2.
 
-- Je konfigurierter climate-Entität ein täglich wiederholter Plan.
-- Zeilen enthalten stabile ID, lokale Uhrzeit HH:MM und Zieltemperatur in der
-  Einheit der climate-Entität. Maximal 48 Zeilen; doppelte Uhrzeiten werden
-  abgelehnt. Die Oberfläche sortiert nach Uhrzeit.
-- Jede Zeile hat zusätzlich einen Aktivierungsschalter neben dem Löschen.
-  Deaktivierte Zeilen behalten ihre Werte, lösen aber keine Aktion aus.
-- Jede Zeile erhält außerdem ein Schloss (`locked`). Zum Schaltpunkt sollen
-  Temperatur und echte Gerätesperre gesetzt werden: geschlossen sperrt den
-  Drehring, offen erlaubt manuelle Temperaturänderungen. Der Zustand gilt bis
-  zum nächsten ausgeführten aktiven Schaltpunkt, auch über Mitternacht.
-  Pausierte Zeilen ändern weder Temperatur noch Sperre. Das Bearbeiten eines
-  Schlosses plant eine Aktion; es sperrt nicht sofort das Gerät.
-- Die Nutzerentscheidung vom 17.10.2026 ist ausdrücklich **zeitabhängig je
-  Zeile**, nicht eine dauerhafte Sperre pro TRV. HA-Temperatursteuerung bleibt
-  möglich. Geräteseitige Bestätigung ist erforderlich, bevor die Oberfläche
-  einen tatsächlich gesperrten Zustand anzeigt.
-- Implementierungsstand: `locked` ist gespeichert und validiert; ältere Zeilen
-  ohne das Feld werden als `false` geladen. Der Gateway-Adapter ist in Aufgabe
-  386 noch offen. Bis dahin meldet die API `lock_supported=false` und weist die
-  Aktivierung von Plänen mit aktiven Sperrzeilen zurück, statt sie zu ignorieren.
-- Neu angelegte Pläne sind leer und deaktiviert. Aktivierung ist unabhängig
-  von der bestehenden Heizungsfreigabe. Leere Pläne schalten nie.
-- Die Uhrzeit richtet sich nach der HA-Zeitzone, nicht nach dem iPhone.
-- Zu einem Schaltpunkt muss die Freigabe exakt `on` sein. `off`, fehlende oder
-  nicht verfügbare Freigaben sperren die Ausführung. Ohne konfigurierte
-  Freigabe gilt nur die Aktivierung des Zeitplans.
-- Manuelle Temperaturen bleiben bis zum nächsten Schaltpunkt erhalten.
-- Neustart, Planänderung, Aktivierung oder erneute Freigabe lösen **keinen
-  sofortigen Sollwertwechsel** aus. Es zählt der nächste zukünftige Schaltpunkt.
-  Damit wird das Verhalten der vorhandenen HA-Zeitautomationen beibehalten;
-  die bestehende Freigabe-Automation darf ihren gemerkten Sollwert herstellen.
-- Bei Sommerzeitbeginn werden nicht existierende Uhrzeiten ausgelassen.
-  Bei Winterzeitbeginn wird eine doppelte Uhrzeit nur beim ersten Auftreten
-  ausgeführt. Vergleiche erfolgen in UTC; diese Regeln werden separat getestet.
-- Offline-Zeiträume werden nicht nachträglich abgespielt. Timer dürfen maximal
-  60 Sekunden verspätet sein. Nicht erreichbare TRVs werden für diesen
-  Schaltpunkt ausgelassen; das Ergebnis steht als `failed` in der API.
-  Eine noch laufende Aktion blockiert die nächste Aktion (`busy`), damit sich
-  Skriptausführungen nicht überlagern. Fehlerdarstellung folgt in der Karte.
-- Ein optionales Setter-Skript erhält `climate_entity` und `temperature`.
-  Ohne Skript wird später `climate.set_temperature` aufgerufen. Die vorhandene
-  Freigabe-Automation behält die Frostschutz-/Ausschaltfunktion.
+## Zeitplan
+
+Je konfigurierter climate-Entität ein täglich wiederholter Plan mit maximal
+48 Zeilen. Eine Zeile enthält `id`, `time` (HH:MM), `temperature`, `enabled`
+und `locked`. Doppelte Uhrzeiten und IDs, ungültige Temperaturen sowie Werte
+außerhalb der aktuellen Gerätegrenzen werden abgelehnt. Alte gespeicherte
+Zeilen ohne `locked` gelten als entsperrt. Pausierte Zeilen bleiben erhalten.
+
+Die HA-Zeitzone gilt. Im Frühjahr nicht existierende Uhrzeiten werden
+übersprungen, im Herbst doppelte Uhrzeiten nur beim ersten Auftreten ausgeführt.
+Vergleiche erfolgen in UTC. Neustart, Bearbeitung und Aktivierung lösen keine
+Nachholung aus; manuelle Sollwerte bleiben bis zur nächsten Schaltzeit wirksam.
+
+Die optionale Heizungsfreigabe muss exakt `on` sein. `off`, unbekannt oder
+nicht verfügbar verhindern den Schaltpunkt. Der Zustand wird vor und nach
+dem Temperaturbefehl geprüft. Bestehende Freigabe-/Frostschutzautomationen
+bleiben aktiv. Das optionale Setter-Skript erhält `climate_entity` und
+`temperature`; ohne Skript wird `climate.set_temperature` aufgerufen.
+
+Ein Serviceaufruf läuft höchstens 90 Sekunden. Timer dürfen bis zu 60 Sekunden
+verspätet starten. Laufende Schaltaktionen überlappen nicht. `last_result`
+enthält `sent`, `failed`, `blocked`, `busy` oder `missed`. `sent` bestätigt den
+abgeschlossenen HA-Serviceaufruf; es ist keine unabhängige Temperaturmessung.
+Die Gerätesperre wird dagegen nach dem Setzen frisch vom TRV zurückgelesen.
+
+## Gerätesperre
+
+Shelly BLU TRV über das registrierte Shelly BLU Gateway Gen3:
+`BluTrv.Call` → `Sys.SetConfig` mit ausschließlich `config.ui.lock`, danach
+`Sys.GetConfig`. Helligkeit, Einheit und Displayausrichtung bleiben erhalten.
+Der Adapter nutzt die vorhandenen Gateway-Zugangsdaten und SHA-256-Digest-Auth.
+Browser und Logs erhalten keine Zugangsdaten. Ein Gateway-Lock serialisiert
+Sperr-RPCs; pro Thermostat sind Planänderungen und Aktionen ebenfalls serialisiert.
+Langsame oder unerreichbare Geräte können die Abfrage bis etwa eine Minute
+verzögern; Schreibbefehl plus Bestätigung sind zwei getrennte RPCs.
+
+Das Schloss der ausgeführten Zeile gilt bis zum nächsten aktiven Schaltpunkt,
+auch über Mitternacht und HA-Neustarts. Eine pausierte Zeile wirkt nicht.
+Geschlossen sperrt den Drehring; Fernsteuerung über HA bleibt möglich. Der
+Dialog unterscheidet geplante Sperren von zuletzt bestätigtem Gerätestatus.
+„Status prüfen“ fragt das Gerät frisch ab, „Jetzt entsperren“ entsperrt sofort.
+Beide Aktionen sind unabhängig davon, ob gerade ein Schaltpunkt ansteht.
+
+Vor einem Sperrbefehl wird die Verantwortung dafür dauerhaft gespeichert.
+Bei verlorener Antwort bleibt damit eine mögliche Sperre bekannt. Plan aus,
+keine aktiven Zeilen oder Freigabe aus lösen das Entsperren aus; bei Fehlern
+folgen minütliche Wiederholungen, auch nach einem Neustart. Eine von außen
+manuell gesetzte Sperre wird beim Pausieren nicht ungefragt aufgehoben.
+Eine reguläre aktive Zeile mit offenem Schloss entsperrt sie hingegen ausdrücklich.
+
+Ein aktiver Plan nur mit geschlossenen Schlössern sperrt fortlaufend. Wird die
+letzte Entsperrzeile entfernt, bleibt diese Bedeutung bestehen. Zum Freigeben
+„Jetzt entsperren“, Plan pausieren oder eine aktive offene Zeile verwenden.
+Scheitert die Temperaturaktion einer offenen Zeile, wird das Entsperren trotzdem
+versucht. Scheitert eine geschlossene Zeile, zeigt der Dialog den Fehler; es
+gibt keine automatische Wiederholung des Temperaturbefehls nach diesem Punkt.
+
+Entladen wartet eine laufende Aktion ab und entsperrt eine eigene Sperre,
+bevor Timer entfernt werden. Ohne Bestätigung bricht das Entladen ab. Beim
+normalen HA-Prozessneustart bleibt die geräteseitige Sperre bestehen; Eigentum
+und Plan werden wieder geladen. Ein physisch unerreichbares Gerät lässt sich
+auch durch Software nicht sofort entsperren.
 
 ## Speicherung und API
 
-Ein HA Store je Config Entry, Version 1, atomare Dateiaktualisierung. Kein
-Schreiben in automations.yaml. Schaltzeiten liegen unter `.storage`, getrennt
-vom Integration-Code; HA-Konfigurationsbackups müssen beide enthalten.
+HA Store, Version 1, atomar mit anschließender Prüfung der geschriebenen Datei.
+Erst nach erfolgreicher Speicherung wird die Revision im Arbeitsspeicher
+veröffentlicht. Keine Änderungen an `automations.yaml`. Daten liegen separat
+unter `.storage`; Modulupdates ersetzen nur Code.
 
-Lesen liefert Planrevision und Gerätegrenzen. Schreiben ersetzt den gesamten
-Plan mit erwarteter Revision. Ein veralteter Client erhält `revision_conflict`
-und darf nicht automatisch überschreiben. Erst nach erfolgreichem Speichern
-wird die neue Revision im Arbeitsspeicher veröffentlicht. Gerätedaten werden
-bei jedem Schreiben neu geprüft; keine stillen Temperaturkorrekturen.
+WebSocket-Befehle mit `entity_id`:
 
-Nur angemeldete Benutzer mit Steuerungsrecht auf die konfigurierte
-climate-Entität dürfen den Plan ändern; Leserecht reicht zum Anzeigen.
-Die API erlaubt keine Änderung der Gerätezuordnung oder freie Serviceaufrufe.
-Einrichtung und optionale Skript-/Freigabezuordnung laufen über den Admin-Config-Flow.
+- `trv_scheduler/get`: Plan, Revision, Grenzen, nächste Zeit und Laufzeitstatus.
+- `trv_scheduler/replace`: `expected_revision`, `enabled`, vollständige `rows`.
+- `trv_scheduler/lock_status`: frischer geräteseitiger Sperrstatus.
+- `trv_scheduler/unlock`: sofortiger bestätigter Entsperrversuch.
 
-## Migration
+Lesen verlangt HA-Leserecht auf der climate-Entität, Schreiben und Entsperren
+Steuerungsrecht. Einrichtung läuft über den Admin-Config-Flow. Es gibt keine
+freien Serviceziele oder RPC-Parameter in der öffentlichen API.
 
-TRV1 Büro: leer. TRV2 Schlafzimmer: 08:00 17 °C, 17:30 22 °C.
-TRV3 Kinderzimmer: 07:00 22,5 °C, 20:00 17 °C.
-Diese Werte sind eine am 17.10.2026 gelesene Bestandsaufnahme, kein automatischer
-Import. Vor Umschaltung Bestand erneut lesen und sichern. Alte vier
-Zeitautomationen erst nach geprüfter Übernahme deaktivieren, nicht löschen.
+Fehlercodes: `revision_conflict`, `invalid_schedule`, `unauthorized`,
+`not_found`, `save_failed`, `unlock_failed`. Bei Konflikten bleibt die Eingabe
+im Dialog; explizites Neuladen verwirft sie. Kein automatisches Überschreiben.
+Pausieren und Löschen funktionieren auch ohne aktuelle Gerätegrenzen;
+neue Werte oder Aktivierung erfordern ein verfügbares climate-Gerät.
 
-## Gerätesperre: Anbindung und weitere Abnahme
+## Bestandsmigration
 
-Alle drei vorhandenen Shelly BLU TRVs besitzen `sys.ui.lock`. Die am
-17.10.2026 gelesenen Gateway-Cachewerte sind jeweils `false`; am Gerät wurde
-nichts umgeschaltet. HA 2025.4.2 stellt keine Lock-Entität dafür bereit.
-Der Adapter in Aufgabe 386 muss `Sys.SetConfig` über `BluTrv.Call` verwenden
-und den Zustand anschließend mit einer frischen Geräteabfrage bestätigen.
-Die Dokumentation erlaubt Antwortzeiten bis zu einer Minute. Keine fremden
-UI-Einstellungen überschreiben, keine Zugangsdaten an die Karte liefern.
+Büro/TRV1: kein vorhandener Zeitplan. Schlafzimmer/TRV2: 08:00 17 °C,
+17:30 22 °C. Kinderzimmer/TRV3: 07:00 22,5 °C, 20:00 17 °C.
+Quelle: Bestandsaufnahme am 17.10.2026; vor Migration erneut prüfen.
+Import startet deaktiviert und mit offenen Schlössern. Erst nach geprüfter
+Installation die vier alten Zeitautomationen deaktivieren und die neuen
+Pläne aktivieren. Die alten Automationen bleiben für Rollback erhalten;
+Freigabe-, Frostschutz- und Sollwertspeicher-Automationen bleiben aktiv.
 
-Vor Inbetriebnahme außerdem festlegen und prüfen: sicheres Entsperren beim
-Deaktivieren/Entfernen eines Plans, Löschen der letzten Entsperrzeile,
-Geräteausfall zwischen Temperatur- und Sperrbefehl und Wiederherstellung nach
-Neustart. Ein klarer Weg zum sofortigen manuellen Entsperren muss vorhanden
-sein. Diese Lebenszyklusfälle sind Teil der Aufgabe 386, noch keine fertige
-Runtime-Funktion.
+## Kompatibilität und Testgrenzen
+
+Custom Card mit eigenem HTML-Dialog, standardmäßige HA-WebSocket- und
+Frontend-Erweiterungspunkte. Keine Patches an HA-Core oder anderen Integrationen.
+Custom Components und separate Store-Dateien überleben normale Updates;
+Kompatibilität mit zukünftigen HA-Versionen ist nicht pauschal garantiert.
+Kein öffentliches HACS-Repository, keine automatischen Modulupdates.
+
+Automatisierte Browserprüfung in Chromium bei 320, 390 und 1280 Pixel Breite.
+Ein reales iPhone mit Companion-App sowie das physische Drehen am gesperrten
+TRV können damit nicht abgenommen werden. Hardwaretests prüfen Sperrkonfiguration,
+Fernsteuerung trotz Sperre und Wiederherstellung über frische RPC-Antworten.
 
 Quellen: [Shelly BLU TRV](https://shelly-api-docs.shelly.cloud/docs-ble/Devices/BLU_ZB/trv/),
-[Gateway RPC](https://shelly-api-docs.shelly.cloud/gen2/Devices/Gen3/ShellyBluGwG3/).
-
-## Kompatibilität
-
-Erste Zielversion: HA 2025.4.2. Spätere Versionen benötigen eigene Prüfungen.
-Die Custom Card verwendet eigene HTML-Dialogelemente und die HA-Karten-API;
-keine internen Thermostat- oder More-Info-Dialoge patchen. HACS-Struktur und
-Veröffentlichung folgen der Paketaufgabe; es gibt noch kein veröffentlichtes Repository.
+[Gateway RPC](https://shelly-api-docs.shelly.cloud/gen2/Devices/Gen3/ShellyBluGwG3/),
+[HA Custom Cards](https://developers.home-assistant.io/docs/frontend/custom-ui/custom-card/).
