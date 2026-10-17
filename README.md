@@ -17,6 +17,16 @@ die Temperatur ändern. „Jetzt entsperren“ gibt den Drehring sofort frei.
 
 Planung und Fortschritt: [Tareas, Projekt 76](http://10.0.12.7:8504/).
 
+## Quellcode
+
+Das private Repository liegt auf [Gitea](https://10.0.12.17:3000/mir/ha-trv-scheduler).
+Der Entwicklungsbranch heißt `master`.
+
+```bash
+git clone git@10.0.12.17:mir/ha-trv-scheduler.git
+cd ha-trv-scheduler
+```
+
 ## Installation
 
 1. Das Release-ZIP entpacken und `custom_components/trv_scheduler` nach
