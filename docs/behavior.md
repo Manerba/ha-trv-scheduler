@@ -1,6 +1,6 @@
 # Verhalten und technische Grenzen
 
-Version 0.3.0, Zielversion Home Assistant 2025.4.2.
+Version 0.3.1, Zielversion Home Assistant 2025.4.2.
 
 ## Zeitplan
 

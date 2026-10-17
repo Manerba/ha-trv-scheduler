@@ -55,7 +55,7 @@ Falls die Companion-App noch „Custom element doesn’t exist“ zeigt: zuerst
 das Dashboard nach unten ziehen, bei Bedarf in den App-Einstellungen
 „Frontend-Cache zurücksetzen“ wählen ([HA-Anleitung](https://www.home-assistant.io/faq/browser/)).
 Bei YAML-verwalteten Ressourcen bleibt die Startseiten-Einbindung als Fallback;
-für die explizite Registrierung dort `/trv_scheduler/trv-scheduler-card.js?v=0.3.0`
+für die explizite Registrierung dort `/trv_scheduler/trv-scheduler-card.js?v=0.3.1`
 mit `type: module` ergänzen. Die gleiche Karte läuft im Browser und im
 Dashboard der offiziellen Home-Assistant-Companion-App.
 
@@ -69,6 +69,7 @@ die Temperatursteuerung nutzen; die Sperrfunktion bleibt dort deaktiviert.
 - Der obere Schalter aktiviert den gesamten Plan; „Aktiv“ nur die einzelne Zeile.
 - Uhrzeiten sind täglich und beziehen sich auf die HA-Zeitzone.
 - Neue Pläne sind leer und deaktiviert, neue Zeilen pausiert und entsperrt.
+- Löschen fragt mit Uhrzeit und Zieltemperatur nach Bestätigung; Abbrechen erhält die Zeile.
 - Das Bearbeiten eines Schlosses speichert eine geplante Aktion. Es wirkt
   erst zur eingestellten Uhrzeit. Der bestätigte Gerätestatus steht darunter.
 - Plan pausieren, alle Zeilen pausieren/löschen oder Heizungsfreigabe ausschalten
@@ -147,7 +148,7 @@ trv_scheduler:
 
 Mit `.venv/bin/python -m homeassistant -c /pfad/zur/testkonfiguration --skip-pip`
 starten. `/api/onboarding` muss antworten und
-`/trv_scheduler/trv-scheduler-card.js?v=0.3.0` die gebündelte Karte liefern.
+`/trv_scheduler/trv-scheduler-card.js?v=0.3.1` die gebündelte Karte liefern.
 Dies prüft den vollständigen Komponentenstart einschließlich HTTP/Frontend;
 Config Flow, Speicherung und Entladen werden zusätzlich in den Integrationstests geprüft.
 

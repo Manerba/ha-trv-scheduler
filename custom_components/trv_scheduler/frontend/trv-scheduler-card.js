@@ -1,4 +1,4 @@
-/* TRV Scheduler 0.3.0 — bundled, dependency-free HA custom card. */
+/* TRV Scheduler 0.3.1 — bundled, dependency-free HA custom card. */
 (() => {
   if (customElements.get('trv-scheduler-card')) return;
   const icon = name => {
@@ -193,7 +193,10 @@
         lock.setAttribute('aria-label',`Drehring ab ${row.time} sperren`);lock.title=row.locked?'Drehring ab dieser Uhrzeit gesperrt':'Drehring ab dieser Uhrzeit bedienbar';
         lock.onclick=()=>{row.locked=!row.locked;this._save();};cell(lock);
         const remove=document.createElement('button');remove.className='icon delete';remove.innerHTML=icon('trash');remove.setAttribute('aria-label',`Schaltzeit ${row.time} löschen`);
-        remove.onclick=()=>{this._draft.rows=this._draft.rows.filter(r=>r.id!==row.id);this._save();};cell(remove);
+        remove.onclick=()=>{
+          if(!window.confirm(`Schaltzeit um ${row.time} mit ${row.temperature} ${this._state.temperature_unit || '°C'} wirklich löschen?`))return;
+          this._draft.rows=this._draft.rows.filter(r=>r.id!==row.id);this._save();
+        };cell(remove);
         body.append(tr);
       });
       this.$('.empty').hidden=rows.length>0;

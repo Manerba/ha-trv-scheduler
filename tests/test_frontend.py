@@ -96,6 +96,18 @@ async def test_inline_edit_toggle_lock_add_delete(page):
         "enabled": False,
         "locked": False,
     }
+    before_delete = await page.evaluate("structuredClone(server.schedule)")
+    page.once("dialog", lambda dialog: dialog.dismiss())
+    await page.get_by_role("button", name="Schaltzeit 09:15 löschen").click()
+    await expect(page.locator("tbody tr")).to_have_count(2)
+    assert await page.evaluate("server.schedule") == before_delete
+
+    async def confirm_delete(dialog):
+        assert dialog.type == "confirm"
+        assert "09:15" in dialog.message and "18.5 °C" in dialog.message
+        await dialog.accept()
+
+    page.once("dialog", confirm_delete)
     await page.get_by_role("button", name="Schaltzeit 09:15 löschen").click()
     await expect(page.locator("tbody tr")).to_have_count(1)
     await page.get_by_role("button", name="＋ Schaltzeit hinzufügen").click()
