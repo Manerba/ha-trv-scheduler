@@ -19,7 +19,7 @@ Planung und Fortschritt: [Tareas, Projekt 76](http://10.0.12.7:8504/).
 
 ## Quellcode
 
-Der Quellcode liegt in privaten Repositories auf
+Der Quellcode liegt in öffentlichen Repositories auf
 [Gitea](https://10.0.12.17:3000/mir/ha-trv-scheduler) und
 [GitHub](https://github.com/Manerba/ha-trv-scheduler).
 Der Entwicklungsbranch heißt `master`; Änderungen werden auf beide Remotes gepusht.
@@ -97,8 +97,8 @@ Für einen Rollback zuerst neue Pläne pausieren, dann alte Zeitautomationen
 wieder aktivieren. So laufen keine zwei Zeitsteuerungen gleichzeitig.
 
 Die Verzeichnisstruktur und `hacs.json` sind für eine spätere HACS-Veröffentlichung
-vorbereitet. Dafür fehlen noch ein öffentliches Repository und die zugehörigen
-Manifest-Links/Codeowner ([HACS-Anforderungen](https://www.hacs.xyz/docs/publish/start/)).
+vorbereitet. Dafür fehlen noch die zugehörigen Manifest-Links/Codeowner
+([HACS-Anforderungen](https://www.hacs.xyz/docs/publish/start/)).
 Es gibt noch keine automatischen Modulupdates. Ein installierbares ZIP lässt sich mit `python tools/build_release.py`
 erzeugen. Core-Dateien und fremde Integrationen werden nicht verändert.
 
